@@ -115,7 +115,7 @@ app.get("/", (req, res) => {
     res.send("🚀 El servidor está activo en Render y listo para recibir solicitudes.");
 });
 // 🚀 **Iniciar el servidor**
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
 });
