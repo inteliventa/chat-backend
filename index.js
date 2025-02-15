@@ -5,6 +5,8 @@ import axios from "axios";
 import dotenv from "dotenv";
 import mammoth from "mammoth";
 import pineconeModule from "@pinecone-database/pinecone";
+import cors from "cors";
+app.use(cors({ origin: "*" })); // Permitir solicitudes desde cualquier dominio
 
 dotenv.config(); // Cargar variables de entorno desde .env
 
