@@ -112,7 +112,7 @@ app.post("/chat", async (req, res) => {
 });
 
 // 🚀 **Iniciar el servidor**
-const PORT = 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
 });
