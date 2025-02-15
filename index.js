@@ -110,7 +110,10 @@ app.post("/chat", async (req, res) => {
         res.status(500).json({ error: "Error al procesar la solicitud" });
     }
 });
-
+// Ruta de prueba para verificar que el servidor está funcionando
+app.get("/", (req, res) => {
+    res.send("🚀 El servidor está activo en Render y listo para recibir solicitudes.");
+});
 // 🚀 **Iniciar el servidor**
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
