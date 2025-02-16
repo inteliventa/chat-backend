@@ -1,6 +1,6 @@
 import fs from "fs";
 import express from "express";
-import cors from "cors"; // Importa CORS correctamente
+import cors from "cors";
 import multer from "multer";
 import axios from "axios";
 import dotenv from "dotenv";
@@ -9,7 +9,7 @@ import pineconeModule from "@pinecone-database/pinecone";
 
 dotenv.config(); // Cargar variables de entorno desde .env
 
-// **📌 INICIALIZAR EXPRESS ANTES DE USAR CORS**
+// **📌 INICIALIZAR EXPRESS**
 const app = express();
 app.use(cors()); // Permitir solicitudes desde cualquier dominio
 app.use(express.json());
@@ -37,10 +37,25 @@ try {
     console.error("❌ Error al conectar con Pinecone:", error);
 }
 
-// 📌 **Ruta de prueba para verificar que el servidor está funcionando**
+// 📌 **Ruta de prueba**
 app.get("/", (req, res) => {
     res.send("🚀 Servidor activo y listo para recibir solicitudes.");
 });
+
+// 📌 **Función para obtener embeddings de OpenAI**
+async function getEmbedding(text) {
+    try {
+        const response = await axios.post(
+            "https://api.openai.com/v1/embeddings",
+            { input: text, model: "text-embedding-ada-002" },
+            { headers: { Authorization: `Bearer ${OPENAI_API_KEY}` } }
+        );
+        return response.data.data[0].embedding;
+    } catch (error) {
+        console.error("❌ Error al obtener embedding:", error);
+        throw new Error("Error al obtener embedding");
+    }
+}
 
 // 📌 **Endpoint para subir archivos DOCX a Pinecone**
 app.post("/upload-docx", upload.single("file"), async (req, res) => {
@@ -56,7 +71,7 @@ app.post("/upload-docx", upload.single("file"), async (req, res) => {
         fs.unlinkSync(filePath); // Eliminar el archivo después de leerlo
 
         // Dividir el texto en fragmentos de 500 caracteres
-        const chunks = fileText.match(/[\s\S]{1,500}/g) || [];
+        const chunks = fileText.match(/.{1,500}/g) || [];
 
         for (const chunk of chunks) {
             const embedding = await getEmbedding(chunk);
@@ -70,7 +85,7 @@ app.post("/upload-docx", upload.single("file"), async (req, res) => {
     }
 });
 
-// 📌 **Endpoint para hacer consultas en Pinecone**
+// 📌 **Endpoint para hacer consultas en Pinecone y OpenAI**
 app.post("/chat", async (req, res) => {
     try {
         const { message } = req.body;
@@ -78,10 +93,36 @@ app.post("/chat", async (req, res) => {
             return res.status(400).json({ error: "El campo 'message' es requerido." });
         }
 
-        res.json({ content: `Recibí tu mensaje: ${message}` });
+        const queryEmbedding = await getEmbedding(message);
+
+        // Buscar en Pinecone los textos más relevantes
+        const results = await index.query({
+            vector: queryEmbedding,
+            topK: 3,
+            includeMetadata: true,
+        });
+
+        // Extraer el contexto más relevante
+        const context = results.matches.map(match => match.metadata.text).join("\n");
+
+        // Enviar el contexto a OpenAI para generar una respuesta
+        const response = await axios.post(
+            "https://api.openai.com/v1/chat/completions",
+            {
+                model: "gpt-3.5-turbo",
+                messages: [
+                    { role: "system", content: "Usa la siguiente información para responder preguntas:\n" + context },
+                    { role: "user", content: message }
+                ],
+                max_tokens: 150,
+            },
+            { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" } }
+        );
+
+        res.json({ content: response.data.choices[0].message.content });
     } catch (error) {
-        console.error("❌ Error en la API:", error);
-        res.status(500).json({ error: "Error en el servidor" });
+        console.error("❌ Error en la API de OpenAI:", error);
+        res.status(500).json({ error: "Error al procesar la solicitud" });
     }
 });
 
