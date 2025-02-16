@@ -28,30 +28,21 @@ console.log("🔑 PINECONE_ENVIRONMENT:", PINECONE_ENVIRONMENT || "No definido")
 // **📌 INICIALIZAR PINECONE**
 const { Pinecone } = pineconeModule;
 const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
-let index = pinecone.index(PINECONE_INDEX_NAME);
+let index;
+
+try {
+    index = pinecone.index(PINECONE_INDEX_NAME);
+    console.log("✅ Pinecone inicializado correctamente.");
+} catch (error) {
+    console.error("❌ Error al conectar con Pinecone:", error);
+}
 
 // 📌 **Ruta de prueba para verificar que el servidor está funcionando**
 app.get("/", (req, res) => {
     res.send("🚀 Servidor activo y listo para recibir solicitudes.");
 });
 
-// 📌 **Ruta para recibir preguntas desde el frontend**
-app.post("/chat", async (req, res) => {
-    try {
-        const { message } = req.body;
-        if (!message) {
-            return res.status(400).json({ error: "El campo 'message' es requerido." });
-        }
-
-        // Aquí deberías hacer la consulta a Pinecone
-        res.json({ content: `Recibí tu mensaje: ${message}` });
-    } catch (error) {
-        console.error("❌ Error en la API:", error);
-        res.status(500).json({ error: "Error en el servidor" });
-    }
-});
-
-// 📌 **Ruta para subir documentos DOCX**
+// 📌 **Endpoint para subir archivos DOCX a Pinecone**
 app.post("/upload-docx", upload.single("file"), async (req, res) => {
     try {
         if (!req.file) {
@@ -64,10 +55,33 @@ app.post("/upload-docx", upload.single("file"), async (req, res) => {
 
         fs.unlinkSync(filePath); // Eliminar el archivo después de leerlo
 
-        res.json({ message: "📂 Archivo DOCX procesado correctamente." });
+        // Dividir el texto en fragmentos de 500 caracteres
+        const chunks = fileText.match(/[\s\S]{1,500}/g) || [];
+
+        for (const chunk of chunks) {
+            const embedding = await getEmbedding(chunk);
+            await index.upsert([{ id: Date.now().toString(), values: embedding, metadata: { text: chunk } }]);
+        }
+
+        res.json({ message: "📂 Archivo DOCX guardado en Pinecone correctamente." });
     } catch (error) {
         console.error("❌ Error al procesar el archivo:", error);
         res.status(500).json({ error: "Error al procesar el archivo" });
+    }
+});
+
+// 📌 **Endpoint para hacer consultas en Pinecone**
+app.post("/chat", async (req, res) => {
+    try {
+        const { message } = req.body;
+        if (!message) {
+            return res.status(400).json({ error: "El campo 'message' es requerido." });
+        }
+
+        res.json({ content: `Recibí tu mensaje: ${message}` });
+    } catch (error) {
+        console.error("❌ Error en la API:", error);
+        res.status(500).json({ error: "Error en el servidor" });
     }
 });
 
