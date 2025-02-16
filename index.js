@@ -129,7 +129,7 @@ app.post("/chat", async (req, res) => {
                     { role: "system", content: "Usa la siguiente información para responder preguntas:\n" + context },
                     { role: "user", content: message }
                 ],
-                max_tokens: 150,
+                max_tokens: 500,
             },
             { headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" } }
         );
