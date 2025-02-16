@@ -42,6 +42,17 @@ app.get("/", (req, res) => {
     res.send("🚀 Servidor activo y listo para recibir solicitudes.");
 });
 
+// 📌 **Endpoint para verificar el estado de Pinecone**
+app.get("/pinecone-status", async (req, res) => {
+    try {
+        const stats = await index.describeIndexStats();
+        res.json(stats);
+    } catch (error) {
+        console.error("❌ Error al obtener estadísticas de Pinecone:", error);
+        res.status(500).json({ error: "No se pudo obtener el estado de Pinecone" });
+    }
+});
+
 // 📌 **Función para obtener embeddings de OpenAI**
 async function getEmbedding(text) {
     try {
