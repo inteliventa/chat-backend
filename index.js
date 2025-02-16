@@ -113,8 +113,12 @@ app.post("/chat", async (req, res) => {
             includeMetadata: true,
         });
 
+        console.log("📌 Resultados de Pinecone:", JSON.stringify(results, null, 2)); // 👈 IMPRIMIR RESULTADOS
+
         // Extraer el contexto más relevante
         const context = results.matches.map(match => match.metadata.text).join("\n");
+
+        console.log("📌 Contexto enviado a OpenAI:", context); // 👈 IMPRIMIR CONTEXTO
 
         // Enviar el contexto a OpenAI para generar una respuesta
         const response = await axios.post(
