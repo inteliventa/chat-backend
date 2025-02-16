@@ -35,6 +35,42 @@ app.get("/", (req, res) => {
     res.send("🚀 Servidor activo y listo para recibir solicitudes.");
 });
 
+// 📌 **Ruta para recibir preguntas desde el frontend**
+app.post("/chat", async (req, res) => {
+    try {
+        const { message } = req.body;
+        if (!message) {
+            return res.status(400).json({ error: "El campo 'message' es requerido." });
+        }
+
+        // Aquí deberías hacer la consulta a Pinecone
+        res.json({ content: `Recibí tu mensaje: ${message}` });
+    } catch (error) {
+        console.error("❌ Error en la API:", error);
+        res.status(500).json({ error: "Error en el servidor" });
+    }
+});
+
+// 📌 **Ruta para subir documentos DOCX**
+app.post("/upload-docx", upload.single("file"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No se proporcionó ningún archivo." });
+        }
+
+        const filePath = req.file.path;
+        const data = await mammoth.extractRawText({ path: filePath });
+        const fileText = data.value.trim();
+
+        fs.unlinkSync(filePath); // Eliminar el archivo después de leerlo
+
+        res.json({ message: "📂 Archivo DOCX procesado correctamente." });
+    } catch (error) {
+        console.error("❌ Error al procesar el archivo:", error);
+        res.status(500).json({ error: "Error al procesar el archivo" });
+    }
+});
+
 // 🚀 **Iniciar el servidor**
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
